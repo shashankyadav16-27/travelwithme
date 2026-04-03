@@ -1,8 +1,22 @@
 import streamlit as st
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
-st.title("Travel With Me ✈️")
+load_dotenv()
 
-place = st.text_input("Enter destination:")
+genai.configure(api_key=os.getenv("AIzaSyCPLl991RIiVkvs7EzIxUpBW4l4oNnv8h4"))
 
-if place:
-    st.write("Planning trip to", place)
+# ✅ FIXED MODEL
+model = genai.GenerativeModel("gemini-flash-latest")
+
+st.title("🌍 Travel With Me ✈️")
+
+user_input = st.text_input("Ask about travel:")
+
+if user_input:
+    try:
+        response = model.generate_content(user_input)
+        st.write(response.text)
+    except Exception as e:
+        st.error(f"Error: {e}")
