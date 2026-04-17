@@ -1,7 +1,5 @@
 import streamlit as st
 from openai import OpenAI
-import os
-from dotenv import load_dotenv
 import requests
 import pandas as pd
 import json
@@ -23,10 +21,9 @@ def convert_currency(amount, from_currency="INR", to_currency="USD"):
         return None
 
 # ================== CONFIG ==================
-load_dotenv()
 
 client = OpenAI(
-    api_key="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",  
+    api_key=st.secrets["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"],
     base_url="https://openrouter.ai/api/v1"
 )
 
