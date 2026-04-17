@@ -22,8 +22,11 @@ def convert_currency(amount, from_currency="INR", to_currency="USD"):
 
 # ================== CONFIG ==================
 
+from openai import OpenAI
+import streamlit as st
+
 client = OpenAI(
-    api_key=st.secrets["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"],
+    api_key=st.secrets["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1"
 )
 
