@@ -27,7 +27,11 @@ import streamlit as st
 
 client = OpenAI(
     api_key=st.secrets["OPENROUTER_API_KEY"],
-    base_url="https://openrouter.ai/api/v1"
+    base_url="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": "travelwithme",
+        "X-Title": "travelwithme app"
+    }
 )
 
 st.set_page_config(page_title="Travel With Me Pro", layout="wide")
