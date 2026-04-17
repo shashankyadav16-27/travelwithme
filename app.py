@@ -4,12 +4,29 @@ import os
 from dotenv import load_dotenv
 import requests
 import pandas as pd
+import json
+import re
+import plotly.express as px
+
+# ================== CURRENCY ==================
+def convert_currency(amount, from_currency="INR", to_currency="USD"):
+    try:
+        url = f"https://api.exchangerate-api.com/v4/latest/{from_currency}"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+
+        rate = data["rates"].get(to_currency)
+        if rate:
+            return amount * rate
+        return None
+    except:
+        return None
 
 # ================== CONFIG ==================
 load_dotenv()
 
 client = OpenAI(
-    api_key="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",
+    api_key="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",  
     base_url="https://openrouter.ai/api/v1"
 )
 
@@ -18,157 +35,127 @@ st.set_page_config(page_title="Travel With Me Pro", layout="wide")
 # ================== DARK MODE ==================
 dark_mode = st.sidebar.toggle("🌙 Dark Mode")
 
-bg = "#0e1117" if dark_mode else "#f5f7fb"
-card = "#1e1e1e" if dark_mode else "white"
-text = "white" if dark_mode else "black"
+if dark_mode:
+    bg = "#0e1117"
+    text = "white"
+    card = "#161b22"
+else:
+    bg = "#f5f7fb"
+    text = "black"
+    card = "white"
 
-# ================== PREMIUM CSS ==================
 st.markdown(f"""
 <style>
-[data-testid="stAppViewContainer"] {{
-    background: {bg};
-    color: {text};
-}}
-
-.big-title {{
-    font-size:48px;
-    font-weight:800;
-    text-align:center;
-    background: linear-gradient(90deg,#00C9FF,#92FE9D);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}}
-
-.subtitle {{
-    text-align:center;
-    color:gray;
-    margin-bottom:30px;
-}}
-
+body {{background-color: {bg}; color: {text};}}
+.big-title {{font-size:42px; font-weight:800; text-align:center;}}
+.subtitle {{text-align:center; color:gray; margin-bottom:20px;}}
 .card {{
-    padding:25px;
+    padding:20px;
     border-radius:20px;
-    background: {card};
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    transition: 0.3s;
-}}
-
-.card:hover {{
-    transform: scale(1.02);
-}}
-
-button {{
-    border-radius:10px !important;
+    background:{card};
+    box-shadow:0 6px 20px rgba(0,0,0,0.1);
+    margin-bottom:15px;
 }}
 </style>
 """, unsafe_allow_html=True)
 
 # ================== HEADER ==================
-st.markdown('<div class="big-title">🌍 Travel With Me ✈️</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">AI-powered smart travel planner</div>', unsafe_allow_html=True)
+st.markdown('<div class="big-title">🌍 Travel With Me Pro ✈️</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Plan smarter. Travel better.</div>', unsafe_allow_html=True)
 
 # ================== SESSION ==================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "saved_trips" not in st.session_state:
-    st.session_state.saved_trips = []
-
-# ================== NAV ==================
-option = st.sidebar.radio("✨ Navigation", [
+# ================== SIDEBAR ==================
+st.sidebar.title("✨ Explore")
+option = st.sidebar.radio("Navigation", [
     "🏠 Explore",
     "🗺 Map",
     "🗓 Itinerary",
     "💰 Budget",
-    "💬 Chat",
-    "❤️ Saved"
+    "💬 Chat"
 ])
 
 # ================== AI ==================
 def generate_response(prompt):
-    with st.spinner("✨ Planning your trip..."):
-        response = client.chat.completions.create(
-            model="meta-llama/llama-3-70b-instruct",
-            messages=[
-                {"role": "system", "content": "You are a professional travel planner. Give structured, engaging travel advice."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-    return response.choices[0].message.content
+    try:
+        with st.spinner("✨ Thinking..."):
+            response = client.chat.completions.create(
+                model="meta-llama/llama-3-70b-instruct",
+                messages=[{"role": "user", "content": prompt}]
+            )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ AI Error: {e}"
 
-# ================== GEO ==================
-@st.cache_data
+# ================== LOCATION ==================
 def get_location(place):
-    url = "https://nominatim.openstreetmap.org/search"
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {"q": place, "format": "json"}
+        headers = {"User-Agent": "travel-app"}
 
-    params = {
-        "q": place,
-        "format": "json",
-        "limit": 1
-    }
+        res = requests.get(url, params=params, headers=headers, timeout=10)
+        data = res.json()
 
-    headers = {
-        "User-Agent": "travelwithme-app (nikhil@email.com)"  # IMPORTANT
-    }
+        if data:
+            return float(data[0]["lat"]), float(data[0]["lon"])
+    except:
+        pass
+
+    return None, None
+
+# ================== WEATHER ==================
+def get_weather(place):
+    API_KEY = "0c6aea14cd570a572317825ddf3665ff"
 
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=10)
+        url = "https://api.openweathermap.org/data/2.5/weather"
+        params = {"q": place, "appid": API_KEY, "units": "metric"}
 
-        print("STATUS:", response.status_code)
-        print("TEXT:", response.text[:200])
+        res = requests.get(url, params=params, timeout=5)
+        data = res.json()
 
-        if response.status_code != 200:
-            return None, None
+        if res.status_code != 200:
+            return None
 
-        data = response.json()
-
-        if not data:
-            return None, None
-
-        lat = float(data[0]["lat"])
-        lon = float(data[0]["lon"])
-
-        return lat, lon
-
-    except Exception as e:
-        print("ERROR:", e)
-        return None, None
+        return {
+            "temp": data["main"]["temp"],
+            "feels": data["main"]["feels_like"],
+            "humidity": data["main"]["humidity"],
+            "desc": data["weather"][0]["description"].title()
+        }
+    except:
+        return None
 
 # ================== EXPLORE ==================
 if option == "🏠 Explore":
-    place = st.text_input("🌍 Enter destination")
+    place = st.text_input("Enter destination")
 
-    col1, col2 = st.columns(2)
-
-    if col1.button("🚀 Explore") and place:
+    if st.button("Explore", key="explore_btn") and place:
         result = generate_response(f"Travel guide for {place}")
         st.markdown(f'<div class="card">{result}</div>', unsafe_allow_html=True)
+        st.image(f"https://source.unsplash.com/900x400/?{place}")
 
-        st.image(f"https://source.unsplash.com/1200x500/?{place}", use_container_width=True)
+        weather = get_weather(place)
 
-    if col2.button("❤️ Save Trip") and place:
-        st.session_state.saved_trips.append(place)
-        st.success("Trip saved!")
+        if weather:
+            st.markdown("### 🌦 Current Weather")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("🌡 Temp", f"{weather['temp']}°C")
+            col2.metric("🤒 Feels", f"{weather['feels']}°C")
+            col3.metric("💧 Humidity", f"{weather['humidity']}%")
+            st.info(weather["desc"])
 
 # ================== MAP ==================
 elif option == "🗺 Map":
-    st.markdown("### 📍 Interactive Map")
-
     place = st.text_input("Enter place")
 
-    if st.button("Show Map") and place:
+    if st.button("Show Map", key="map_btn") and place:
         lat, lon = get_location(place)
-
         if lat and lon:
-            # Google Maps Embed
-            map_url = f"https://www.google.com/maps?q={lat},{lon}&output=embed"
-
-            st.components.v1.iframe(map_url, height=500)
-
-            df = pd.DataFrame({"lat": [lat], "lon": [lon]})
-            st.map(df, zoom=10)
-
+            st.map({"lat": [lat], "lon": [lon]})
         else:
             st.error("Location not found")
 
@@ -177,23 +164,64 @@ elif option == "🗓 Itinerary":
     place = st.text_input("Destination")
     days = st.slider("Days", 1, 10, 3)
 
-    if st.button("Generate Itinerary") and place:
-        result = generate_response(f"{days}-day itinerary for {place}")
+    if st.button("Generate", key="itinerary_btn") and place:
+        result = generate_response(f"{days} day itinerary for {place}")
         st.markdown(f'<div class="card">{result}</div>', unsafe_allow_html=True)
 
 # ================== BUDGET ==================
 elif option == "💰 Budget":
     place = st.text_input("Destination")
     days = st.slider("Days", 1, 15, 5)
-    style = st.selectbox("Style", ["Budget", "Mid-range", "Luxury"])
+    style = st.selectbox("Style", ["Budget","Mid-range","Luxury"])
+    currency = st.selectbox("💱 Convert to currency", ["INR", "USD", "EUR"])
 
-    if st.button("Calculate Budget") and place:
-        result = generate_response(f"Estimate cost for {days} days in {place} for a {style} traveler")
-        st.markdown(f'<div class="card">{result}</div>', unsafe_allow_html=True)
+    if st.button("Calculate Cost", key="budget_btn") and place:
+
+        multiplier = 1.5
+        if "goa" in place.lower():
+            multiplier = 1
+        elif "paris" in place.lower():
+            multiplier = 3
+
+        if style == "Budget":
+            stay, food, transport, activities = 1000, 500, 300, 400
+        elif style == "Mid-range":
+            stay, food, transport, activities = 3000, 1200, 800, 1000
+        else:
+            stay, food, transport, activities = 8000, 3000, 2000, 3000
+
+        data = {
+            "Stay": stay * days * multiplier,
+            "Food": food * days * multiplier,
+            "Transport": transport * days * multiplier,
+            "Activities": activities * days * multiplier
+        }
+        data["Total"] = sum(data.values())
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Stay", f"₹{int(data['Stay'])}")
+        col2.metric("Food", f"₹{int(data['Food'])}")
+        col3.metric("Transport", f"₹{int(data['Transport'])}")
+
+        st.metric("Total", f"₹{int(data['Total'])}")
+
+        df = pd.DataFrame({
+            "Category": list(data.keys())[:-1],
+            "Cost": list(data.values())[:-1]
+        }).set_index("Category")
+
+        st.bar_chart(df)
+
+        fig = px.pie(df, values="Cost", names=df.index)
+        st.plotly_chart(fig)
+
+        converted = convert_currency(data["Total"], "INR", currency)
+        if converted:
+            st.success(f"{currency}: {round(converted, 2)}")
 
 # ================== CHAT ==================
 elif option == "💬 Chat":
-    user_input = st.chat_input("Ask anything about travel...")
+    user_input = st.chat_input("Ask anything...")
 
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
@@ -204,17 +232,6 @@ elif option == "💬 Chat":
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-# ================== SAVED ==================
-elif option == "❤️ Saved":
-    st.markdown("### ❤️ Saved Trips")
-
-    if st.session_state.saved_trips:
-        for trip in st.session_state.saved_trips:
-            st.markdown(f'<div class="card">🌍 {trip}</div>', unsafe_allow_html=True)
-    else:
-        st.info("No saved trips yet")
-
 # ================== FOOTER ==================
 st.markdown("---")
-
-
+st.caption("🚀 Travel With Me Pro")
