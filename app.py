@@ -164,10 +164,13 @@ elif option == "🗓 Itinerary":
     place = st.text_input("Destination")
     days = st.slider("Days", 1, 10, 3)
 
-    if st.button("Generate", key="itinerary_btn") and place:
-        result = generate_response(f"{days} day itinerary for {place}")
-        st.markdown(f'<div class="card">{result}</div>', unsafe_allow_html=True)
-
+    if st.button("Generate", key="itinerary_btn"):
+        if not place:
+            st.warning("Please enter a destination")
+        else:
+            with st.spinner("Generating itinerary..."):
+                result = generate_response(f"{days} day itinerary for {place}")
+                st.markdown(f'<div class="card">{result}</div>', unsafe_allow_html=True)
 # ================== BUDGET ==================
 elif option == "💰 Budget":
     place = st.text_input("Destination")
