@@ -13,8 +13,11 @@ env/
 .DS_Store
 Thumbs.db
 
-# Streamlit cache
-.streamlit/
+# Only ignore secrets, NOT the whole .streamlit folder
+.streamlit/secrets.toml
+
+# Database (don't push local data)
+travel.db
 
 # Logs
 *.log

@@ -34,7 +34,7 @@ client = OpenAI(
     }
 )
 
-st.set_page_config(page_title="Travel With Me Pro", layout="wide")
+st.set_page_config(page_title="Travel With Me", layout="wide")
 
 # ================== DARK MODE ==================
 dark_mode = st.sidebar.toggle("🌙 Dark Mode")
@@ -64,7 +64,7 @@ body {{background-color: {bg}; color: {text};}}
 """, unsafe_allow_html=True)
 
 # ================== HEADER ==================
-st.markdown('<div class="big-title">🌍 Travel With Me Pro ✈️</div>', unsafe_allow_html=True)
+st.markdown('<div class="big-title">🌍 Travel With Me ✈️</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Plan smarter. Travel better.</div>', unsafe_allow_html=True)
 
 # ================== SESSION ==================
@@ -241,4 +241,4 @@ elif option == "💬 Chat":
 
 # ================== FOOTER ==================
 st.markdown("---")
-st.caption("🚀 Travel With Me Pro")
+st.caption("🚀 Travel With Me")
